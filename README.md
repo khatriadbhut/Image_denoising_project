@@ -120,7 +120,7 @@ def build_dce_net():
     return keras.Model(inputs=input_img, outputs=x_r)
 ```
 
-#  Loss Functions : SSIM, Total variation loss, Exposure loss, Spatial Consistency Loss, Color Consistency Loss, Illumination Smoothness Loss
+#  Loss Functions : Exposure loss, Spatial Consistency Loss, Color Consistency Loss, Illumination Smoothness Loss
 
 To enable zero-reference learning in DCE-Net, we use a set of differentiable zero-reference losses that allow us to evaluate the quality of enhanced images.
 -->The color constancy loss is used to correct the potential color deviations in the enhanced image.
@@ -129,11 +129,7 @@ To enable zero-reference learning in DCE-Net, we use a set of differentiable zer
 
 -->Illuminattion Smoothness Loss is to preserve the monotonicity relations between neighboring pixels, the illumination smoothness loss is added to each curve parameter map.
 
--->The spatial consistency loss encourages spatial coherence of the enhanced image by preserving the contrast between neighboring regions across the input image and its enhanced version.
-
--->Structural Similarity Index (SSIM) Loss measures the similarity between two images based on luminance, contrast, and structure.
-
---> TV loss encourages spatial smoothness in images by penalizing the gradient differences between neighboring pixels.
+-->The spatial consistency loss encourages spatial coherence of the enhanced image by preserving the contrast between neighboring regions across the input image and its enhanced version
 
 ```
 def color_constancy_loss(x):
@@ -277,9 +273,7 @@ class ZeroDCE(keras.Model):
             name="color_constancy_loss"
         )
         self.exposure_loss_tracker = keras.metrics.Mean(name="exposure_loss")
-      #  self.perceptual_loss_tracker = keras.metrics.Mean(name="perceptual_loss")
-        self.ssim_loss_tracker = keras.metrics.Mean(name="ssim_loss")
-        self.total_variation_loss_tracker = keras.metrics.Mean(name="total_variation_loss")
+     
 
     @property
     def metrics(self):
@@ -289,9 +283,7 @@ class ZeroDCE(keras.Model):
             self.spatial_constancy_loss_tracker,
             self.color_constancy_loss_tracker,
             self.exposure_loss_tracker,
-     #       self.perceptual_loss_tracker,
-            self.ssim_loss_tracker,
-            self.total_variation_loss_tracker,
+
         ]
 
     def get_enhanced_image(self, data, output):
@@ -326,18 +318,14 @@ class ZeroDCE(keras.Model):
         loss_color_constancy = 5 * tf.reduce_mean(color_constancy_loss(enhanced_image))
         loss_exposure = 10 * tf.reduce_mean(exposure_loss(enhanced_image))
 
-    #    perceptual_loss = VGGPerceptualLoss()(data, enhanced_image)
-        ssim_loss = 1 - tf.image.ssim(data, enhanced_image, max_val=1.0)
-        tv_loss = tf.reduce_sum(tf.image.total_variation(enhanced_image))
+  
 
         total_loss = (
             loss_illumination
             + loss_spatial_constancy
             + loss_color_constancy
             + loss_exposure
-   #         + perceptual_loss
-            + ssim_loss
-            + 0.1 * tv_loss
+
         )
 
         return {
@@ -346,9 +334,7 @@ class ZeroDCE(keras.Model):
             "spatial_constancy_loss": loss_spatial_constancy,
             "color_constancy_loss": loss_color_constancy,
             "exposure_loss": loss_exposure,
-  #          "perceptual_loss": perceptual_loss,
-            "ssim_loss": ssim_loss,
-            "total_variation_loss": tv_loss,
+  
         }
 
     def train_step(self, data):
@@ -370,9 +356,7 @@ class ZeroDCE(keras.Model):
         )
         self.color_constancy_loss_tracker.update_state(losses["color_constancy_loss"])
         self.exposure_loss_tracker.update_state(losses["exposure_loss"])
- #       self.perceptual_loss_tracker.update_state(losses["perceptual_loss"])
-        self.ssim_loss_tracker.update_state(losses["ssim_loss"])
-        self.total_variation_loss_tracker.update_state(losses["total_variation_loss"])
+
 
         return {metric.name: metric.result() for metric in self.metrics}
 
@@ -389,9 +373,7 @@ class ZeroDCE(keras.Model):
         )
         self.color_constancy_loss_tracker.update_state(losses["color_constancy_loss"])
         self.exposure_loss_tracker.update_state(losses["exposure_loss"])
-#        self.perceptual_loss_tracker.update_state(losses["perceptual_loss"])
-        self.ssim_loss_tracker.update_state(losses["ssim_loss"])
-        self.total_variation_loss_tracker.update_state(losses["total_variation_loss"])
+
 
         return {metric.name: metric.result() for metric in self.metrics}
 
@@ -444,10 +426,19 @@ plot_result("illumination_smoothness_loss")
 plot_result("spatial_constancy_loss")
 plot_result("color_constancy_loss")
 plot_result("exposure_loss")
-#plot_result("perceptual_loss")
-plot_result("ssim_loss")
-plot_result("total_variation_loss")
+
 ```
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/a2bb0783-969f-414c-915d-bf1db42e3096)
+
+
+
+
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/4c642c96-8125-47dc-af94-7284f32276cf)
+
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/51dd0f96-8db5-4183-bfc0-f8113951ffc5)
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/405a7435-d931-4f2f-b241-0149deee053d)
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/ca8c058f-015a-4400-a401-3a8efb0321ae)
+
 # Inference
 
 Here we define two functions, plot_results and infer, for visualizing and inferring image enhancements using the ZeroDCE model. The plot_results function takes a list of images and their corresponding titles, and plots them side by side in a single row within a figure of specified size using matplotlib, turning off axis labels for a cleaner display. The infer function processes an input image for inference: it converts the image to an array, normalizes it by scaling pixel values to the range [0, 1], and adds a batch dimension. This processed image is then passed through the zero_dce_model to get the enhanced image output, which is rescaled to the range [0, 255], cast to uint8 type, converted back to a PIL image, and returned for visualization or further use.
@@ -487,6 +478,23 @@ for val_image_file in test_images:
         (20, 12),
     )
 ```
+
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/d4785fdf-0a03-40b3-9876-6d45f720fb27)
+
+
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/38e68ba7-29dd-453b-b24d-d8dfe2675fba)
+
+
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/5fc55a88-fc15-4a94-9e18-3b7297788462)
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/ecdbcf3f-d871-4fa3-89f2-64408211c8f4)
+
+
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/b8d111e3-0b9e-4f54-ad16-4f55aa543457)
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/f8b562f8-a8f0-4f7b-98cc-410a594a8bc5)
+
+![download](https://github.com/khatriadbhut/Image_denoising_project/assets/147019819/24d483e5-a06a-4688-a45f-42a8ad001db1)
+
+
 # Calculating PIL Value
 
 Now, let's calculate the average Peak Signal-to-Noise Ratio (PSNR) for our model and the test dataset using calculate_psnr_for_model. It iterates through the test dataset, computes PSNR between true images and their model predictions (model(data, training=False)), and then prints the average PSNR to evaluate the model's image enhancement performance.
@@ -505,7 +513,7 @@ def calculate_psnr_for_model(model, test_dataset):
     average_psnr = tf.reduce_mean(psnr_values)
     return average_psnr.numpy()
 
-average_psnr = calculate_psnr_for_model(zero_dce_model, test_ds)
+average_psnr = calculate_psnr_for_model(zero_dce_model, test_images)
 print(f"Average PSNR for the test dataset: {average_psnr:.2f} dB")
 
 ```

@@ -1,0 +1,6 @@
+tensorflow
+keras
+numpy
+pillow
+matplotlib
+requests>=2.27.1
